@@ -1,4 +1,5 @@
 # Scan script to collect MACs
+# Just run once time for scanning every devices
 import asyncio
 from bleak import BleakScanner
 

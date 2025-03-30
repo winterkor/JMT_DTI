@@ -3,7 +3,8 @@ from bleak import BleakClient
 
 CHARACTERISTIC_UUID = "68342c53-ac8f-48af-bb4d-7a55375c98a5"  # Same as in ESP32
 
-def load_tool_database(filename="tool_database.txt"):
+# Read the database file and collect as tool_01,...
+def load_tool_database(filename="Integration/tool_database.txt"):
     tools = {}
     with open(filename, "r") as file:
         for line in file:
