@@ -31,8 +31,8 @@ void setup() {
   Serial.begin(115200); //Can remove to save energy
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
-  WiFi.mode(WIFI_OFF); // Turn off Wi-Fi to save battery
-  btStop(); // disables Bluetooth classic (BLE still works)
+  // WiFi.mode(WIFI_OFF); // Turn off Wi-Fi to save battery
+  // btStop(); // disables Bluetooth classic (BLE still works)
 
   BLEDevice::init("Tool_01"); //Set this ESP32 as Tool_01
   BLEServer *pServer = BLEDevice::createServer(); //Creates a BLE server
@@ -72,7 +72,7 @@ void loop() {
   // After 5 seconds, go to deep sleep
   if (millis() - startTime > 5000) {
     Serial.println("💤 Going to deep sleep for 10 seconds...");
-    esp_sleep_enable_timer_wakeup(10 * 1000000); // Set up the time after it go to sleep, wake it up after 10 seconds
+    esp_sleep_enable_timer_wakeup(1 * 1000000); // Set up the time after it go to sleep, wake it up after 10 seconds
     esp_deep_sleep_start(); // Deep sleep mode stop loop
   }
   //After that, it automatically restarts the program completely
