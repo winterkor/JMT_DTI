@@ -26,8 +26,8 @@ async def find_tool():
     try:
         print(f"Received request to find: {tool_name}")
 
-        # call async function from Connection.py
-        success = await send_buzz_command(tool_name)
+        # run async function inside the global event loop
+        success = loop.run_until_complete(send_buzz_command(tool_name))
         if success: 
             return jsonify({"message": f"{tool_name} buzzed successfully"}), 200
         else: 
