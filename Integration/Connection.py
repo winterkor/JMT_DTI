@@ -1,7 +1,7 @@
 import asyncio
 from bleak import BleakClient
 
-CHARACTERISTIC_UUID = "6acbd969-2f0d-4e1d-92c2-c99c698aed83"  # Same as in ESP32
+CHARACTERISTIC_UUID = "19b10011-e8f2-537e-4f6c-d104768a1214"  # Same as in ESP32
 
 # Read the database file of tools
 def load_tool_database(filename="Integration/tool_database.txt"):
@@ -23,7 +23,7 @@ async def send_buzz_command(tool_name):
     selected_mac = tools[tool_name] #get mac address of tool
     try:
         async with BleakClient(selected_mac, timeout=10.0) as client:
-            await client.write_gatt_char(CHARACTERISTIC_UUID, b"j") #send command, value = "j"
+            await client.write_gatt_char(CHARACTERISTIC_UUID, b"buzz") #send command, value = "j"
             return True
     except Exception as e:
         print(f"Connection failed: {e}")
@@ -46,7 +46,7 @@ async def main():
     try:
         async with BleakClient(selected_mac, timeout=20.0) as client:
             print("Connected. Sending buzz command...")
-            await client.write_gatt_char(CHARACTERISTIC_UUID, b"j")
+            await client.write_gatt_char(CHARACTERISTIC_UUID, b"buzz")
             print("Buzz command sent to", search)
     except Exception as e:
         print(f"Connection failed: {e}")

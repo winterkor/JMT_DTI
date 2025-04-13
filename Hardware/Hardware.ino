@@ -3,9 +3,9 @@
 #include <BLEUtils.h>
 #include "esp_sleep.h"
 
-// BLE UUIDs
-#define SERVICE_UUID        "12345678-1234-1234-1234-1234567890ab"
-#define CHARACTERISTIC_UUID "6acbd969-2f0d-4e1d-92c2-c99c698aed83"
+// BLE UUIDs – must match middleman
+#define SERVICE_UUID        "19b10010-e8f2-537e-4f6c-d104768a1214"
+#define CHARACTERISTIC_UUID "19b10011-e8f2-537e-4f6c-d104768a1214"
 
 // Hardware pins
 const int LED_PIN = 8;
@@ -17,23 +17,25 @@ unsigned long startTime;
 // BLE characteristic pointer
 BLECharacteristic* commandCharacteristic;
 
-// BLE callback
+// BLE callback class
 class CommandCallback : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* characteristic) override {
     String value = characteristic->getValue();
-    if (!value.isEmpty() && value[0] == 'j') { // 'j' for "jiggle"
+    if (value == "buzz") {
+      Serial.println("✅ Received 'buzz' command!");
       buzzNow = true;
     }
   }
 };
 
 void setup() {
+  Serial.begin(115200);
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
 
-  // BLE setup
-  BLEDevice::init("Tool_01");
+  // BLE init
+  BLEDevice::init("Tool_01_clawhammer");  // This must match the web callname
   BLEServer* pServer = BLEDevice::createServer();
   BLEService* pService = pServer->createService(SERVICE_UUID);
 
@@ -48,6 +50,7 @@ void setup() {
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->start();
 
+  Serial.println("📡 BLE Advertising: Tool_01_clawhammer");
   startTime = millis();
 }
 
@@ -64,9 +67,10 @@ void loop() {
     buzzNow = false;
   }
 
-  // Go to deep sleep after 5 seconds
+  // Deep sleep after 5 seconds idle
   if (millis() - startTime > 5000) {
-    esp_sleep_enable_timer_wakeup(1000000); // 1 second
-    esp_deep_sleep_start(); // Will reset and run setup again
+    Serial.println("😴 Going to deep sleep...");
+    esp_sleep_enable_timer_wakeup(1000000); // 1 second wake-up
+    esp_deep_sleep_start(); // Will reset and restart setup
   }
 }
