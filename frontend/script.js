@@ -93,7 +93,7 @@ async function findmytool(tool) {
   // Show loading popup
   showPopup("🔍 Finding your tool...", true);
   try {
-      let response = await fetch("http://172.20.10.2/find_tool", { // Flask server URL
+      let response = await fetch("http://172.20.10.8/find_tool", { // Flask server URL
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tool: tool.callname }),

@@ -5,19 +5,19 @@
 #include <BLEClient.h>
 
 //WiFi credentials
-const char* ssid = "Luck";
-const char* password = "winterwifinotfreebutfree";
+const char* ssid = "ey";
+const char* password = "81828482";
 
 #define SERVICE_UUID        "19b10010-e8f2-537e-4f6c-d104768a1214"
 #define CHARACTERISTIC_UUID "19b10011-e8f2-537e-4f6c-d104768a1214"
 
-WebServer server(80); //create server on port 80
+WebServer server(80); //Create server on port 80
 BLEScan* bleScan;
 
 //BLE signal sending (Middleman and End_ESP32)
 void sendBuzzToTool(String toolCallname) {
   Serial.println("Scanning for BLE device: " + toolCallname);
-  BLEScanResults* results = bleScan->start(5); // 5 seconds
+  BLEScanResults* results = bleScan->start(5);
 
   for (int i = 0; i < results->getCount(); i++) {
     BLEAdvertisedDevice device = results->getDevice(i);
@@ -25,37 +25,62 @@ void sendBuzzToTool(String toolCallname) {
     Serial.println("Found: " + name);
 
     if (name == toolCallname) {
-      Serial.println("Match found! Connecting...");
+      Serial.println("Match found. Connecting...");
 
-      BLEClient* client = BLEDevice::createClient(); //act as a client to talk with peripheral
-      if (client->connect(&device)) {
-        BLERemoteService* service = client->getService(SERVICE_UUID);
-        if (!service) {
-          Serial.println("Service not found!");
-          client->disconnect();
-          return;
-        }
-
-        BLERemoteCharacteristic* characteristic = service->getCharacteristic(CHARACTERISTIC_UUID);
-        if (!characteristic || !characteristic->canWrite()) {
-          Serial.println("Characteristic error!");
-          client->disconnect();
-          return;
-        }
-
-        //send signal if everything is all set
-        characteristic->writeValue("buzz");
-        Serial.println("'buzz' command sent.");
-        client->disconnect();
-        return;
-      } 
-      else {
+      BLEClient* client = BLEDevice::createClient();
+      if (!client->connect(&device)) {
         Serial.println("Failed to connect.");
+        delete client;
+        bleScan->clearResults();
         return;
       }
+
+      delay(500); // Wait for BLE stack to settle
+
+      if (!client->isConnected()) {
+        Serial.println("Client not connected after delay.");
+        delete client;
+        bleScan->clearResults();
+        return;
+      }
+
+      BLERemoteService* service = client->getService(SERVICE_UUID);
+      if (service == nullptr) {
+        Serial.println("Service not found.");
+        client->disconnect();
+        delete client;
+        bleScan->clearResults();
+        return;
+      }
+
+      BLERemoteCharacteristic* characteristic = service->getCharacteristic(CHARACTERISTIC_UUID);
+      if (characteristic == nullptr) {
+        Serial.println("Characteristic not found.");
+        client->disconnect();
+        delete client;
+        bleScan->clearResults();
+        return;
+      }
+
+      if (!characteristic->canWrite()) {
+        Serial.println("Characteristic not writable.");
+        client->disconnect();
+        delete client;
+        bleScan->clearResults();
+        return;
+      }
+
+      characteristic->writeValue("buzz");
+      Serial.println("'buzz' command sent.");
+
+      client->disconnect();
+      delete client;
+      bleScan->clearResults();
+      return;
     }
   }
-  Serial.println("Target tool not found.");
+
+  Serial.println("Tool not found.");
   bleScan->clearResults();
 }
 
@@ -104,6 +129,14 @@ void setup() {
   BLEDevice::init("MiddlemanESP32");
   bleScan = BLEDevice::getScan();
   bleScan->setActiveScan(true);
+
+  //CORS preflight route
+  server.on("/find_tool", HTTP_OPTIONS, []() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Access-Control-Allow-Headers", "*");
+    server.sendHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    server.send(204);
+  });
 
   //Web server route
   server.on("/find_tool", handleFindTool);
