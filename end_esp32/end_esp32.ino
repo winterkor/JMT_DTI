@@ -20,7 +20,7 @@ BLECharacteristic* commandCharacteristic;
 // BLE callback class
 class CommandCallback : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* characteristic) override {
-    std::string value = characteristic->getValue();
+    String value = characteristic->getValue();
     if (value == "buzz") {
       Serial.println("Received 'buzz' command!");
       buzzNow = true;
@@ -35,7 +35,7 @@ void setup() {
   digitalWrite(LED_PIN, HIGH);
 
   // BLE init
-  BLEDevice::init("Tool_01_clawhammer");  // This must match the web callname
+  BLEDevice::init("Tool_05_digitalmultimeter");  // This must match the web callname
   BLEServer* pServer = BLEDevice::createServer();
   BLEService* pService = pServer->createService(SERVICE_UUID);
 
@@ -49,13 +49,12 @@ void setup() {
   BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->start();
-
-  Serial.println("BLE Advertising: Tool_01_clawhammer");
-  startTime = millis();
+  // Serial.println("BLE Advertising: Tool_01_clawhammer");
 }
 
 void loop() {
   if (buzzNow) {
+    startTime = millis();
     digitalWrite(LED_PIN, LOW);
     for (int i = 0; i < 3; i++) {
       digitalWrite(BUZZER_PIN, HIGH);
@@ -68,7 +67,7 @@ void loop() {
   }
 
   // Deep sleep after 5 seconds idle
-  if (millis() - startTime > 5000) {
+  if (millis() - startTime > 30000) {
     Serial.println("😴 Going to deep sleep...");
     esp_sleep_enable_timer_wakeup(1000000); // 1 second wake-up
     esp_deep_sleep_start(); // Will reset and restart setup

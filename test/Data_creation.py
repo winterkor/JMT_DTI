@@ -5,7 +5,7 @@ from bleak import BleakScanner
 
 async def main():
     print("Scanning for nearby tools...")
-    devices = await BleakScanner.discover(timeout=20.0)
+    devices = await BleakScanner.discover(timeout=10.0)
 
     with open("test/tool_database.txt", "w") as f:
         for d in devices:

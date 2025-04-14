@@ -108,7 +108,7 @@ void setup() {
   //Web server route
   server.on("/find_tool", handleFindTool);
   server.begin();
-  Serial.println("🌐 HTTP server started.");
+  Serial.println("HTTP server started.");
 }
 
 void loop() {
