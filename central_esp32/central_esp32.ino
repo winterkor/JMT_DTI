@@ -5,8 +5,8 @@
 #include <BLEClient.h>
 
 //WiFi credentials
-const char* ssid = "ey";
-const char* password = "81828482";
+const char* ssid = "Luck";
+const char* password = "winterwifinotfreebutfree";
 
 #define SERVICE_UUID        "19b10010-e8f2-537e-4f6c-d104768a1214"
 #define CHARACTERISTIC_UUID "19b10011-e8f2-537e-4f6c-d104768a1214"
