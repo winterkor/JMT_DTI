@@ -1,32 +1,32 @@
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEUtils.h>
-#include "esp_sleep.h"
+// REVISED END_ESP32 CODE FOR ESP-NOW RECEPTION + VIBRATION
+#include <esp_now.h>
+#include <WiFi.h>
 
-// BLE UUIDs
-#define SERVICE_UUID        "19b10010-e8f2-537e-4f6c-d104768a1214"
-#define CHARACTERISTIC_UUID "19b10011-e8f2-537e-4f6c-d104768a1214"
-
-// Hardware pins
 const int LED_PIN = 8;
 const int BUZZER_PIN = 4;
 
 bool buzzNow = false;
-unsigned long startTime;
 
-// BLE characteristic pointer
-BLECharacteristic* commandCharacteristic;
-
-// BLE callback class
-class CommandCallback : public BLECharacteristicCallbacks {
-  void onWrite(BLECharacteristic* characteristic) override {
-    String value = characteristic->getValue();
-    if (value == "buzz") {
-      Serial.println("Received 'buzz' command!");
-      buzzNow = true;
-    }
+// Callback when ESP-NOW data is received
+void onDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData, int len) {
+  String message = "";
+  for (int i = 0; i < len; i++) {
+    message += (char)incomingData[i];
   }
-};
+
+  Serial.print("From MAC: ");
+  char macStr[18];
+  snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+           recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
+           recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
+  Serial.println(macStr);
+
+  Serial.println("ESP-NOW Message: " + message);
+
+  if (message == "buzz") {
+    buzzNow = true;
+  }
+}
 
 void setup() {
   Serial.begin(115200);
@@ -34,27 +34,19 @@ void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
 
-  // BLE init
-  BLEDevice::init("Tool_02_rubberhammer");  // This must match the web callname
-  BLEServer* pServer = BLEDevice::createServer();
-  BLEService* pService = pServer->createService(SERVICE_UUID);
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
 
-  commandCharacteristic = pService->createCharacteristic(
-    CHARACTERISTIC_UUID,
-    BLECharacteristic::PROPERTY_WRITE
-  );
-  commandCharacteristic->setCallbacks(new CommandCallback());
-  pService->start();
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
 
-  BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
-  pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->start();
-  // Serial.println("BLE Advertising: Tool_01_clawhammer");
+  esp_now_register_recv_cb(onDataRecv);
 }
 
 void loop() {
   if (buzzNow) {
-    startTime = millis();
     digitalWrite(LED_PIN, LOW);
     for (int i = 0; i < 3; i++) {
       digitalWrite(BUZZER_PIN, HIGH);
@@ -66,10 +58,8 @@ void loop() {
     buzzNow = false;
   }
 
-  // Deep sleep after 5 seconds idle
-  if (millis() - startTime > 30000) {
-    Serial.println("😴 Going to deep sleep...");
-    esp_sleep_enable_timer_wakeup(1000000); // 1 second wake-up
-    esp_deep_sleep_start(); // Will reset and restart setup
-  }
+  // Wake every 30s to listen again
+  Serial.println("Going to deep sleep for 30 seconds...");
+  esp_sleep_enable_timer_wakeup(1LL * 1000000);  // 30 seconds
+  esp_deep_sleep_start();
 }

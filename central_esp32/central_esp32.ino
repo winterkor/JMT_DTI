@@ -1,90 +1,44 @@
+// REVISED MIDDLEMAN CODE WITH ESP-NOW INSTEAD OF BLE
 #include <WiFi.h>
+#include "esp_wifi.h"
+#include <esp_now.h>
 #include <WebServer.h>
-#include <BLEDevice.h>
-#include <BLEScan.h>
-#include <BLEClient.h>
 
-//WiFi credentials
+
 const char* ssid = "Luck";
 const char* password = "winterwifinotfreebutfree";
 
-#define SERVICE_UUID        "19b10010-e8f2-537e-4f6c-d104768a1214"
-#define CHARACTERISTIC_UUID "19b10011-e8f2-537e-4f6c-d104768a1214"
+WebServer server(80);
 
-WebServer server(80); //Create server on port 80
-BLEScan* bleScan;
+// Tool MAC addresses
+// Replace with your real tool MAC addresses
+uint8_t toolMACs[][6] = {
+  {0x24, 0x6F, 0x28, 0xAA, 0xBB, 0xCC}, // Tool_01
+  {0x24, 0x6F, 0x28, 0xDD, 0xEE, 0xFF}  // Tool_02
+};
+String toolNames[] = {"Tool_01_clawhammer", "Tool_02_rubberhammer"};
 
-//BLE signal sending (Middleman and End_ESP32)
+// ESP-NOW send callback
+void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  Serial.print("Send Status: ");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Fail");
+}
+
 void sendBuzzToTool(String toolCallname) {
-  Serial.println("Scanning for BLE device: " + toolCallname);
-  BLEScanResults* results = bleScan->start(5);
-
-  for (int i = 0; i < results->getCount(); i++) {
-    BLEAdvertisedDevice device = results->getDevice(i);
-    String name = device.getName().c_str();
-    Serial.println("Found: " + name);
-
-    if (name == toolCallname) {
-      Serial.println("Match found. Connecting...");
-
-      BLEClient* client = BLEDevice::createClient();
-      if (!client->connect(&device)) {
-        Serial.println("Failed to connect.");
-        delete client;
-        bleScan->clearResults();
-        return;
+  for (int i = 0; i < sizeof(toolNames) / sizeof(toolNames[0]); i++) {
+    if (toolNames[i] == toolCallname) {
+      esp_err_t result = esp_now_send(toolMACs[i], (uint8_t *)"buzz", 4);
+      if (result == ESP_OK) {
+        Serial.println("Buzz command sent to: " + toolCallname);
+      } else {
+        Serial.println("Failed to send buzz command.");
       }
-
-      delay(500); // Wait for BLE stack to settle
-
-      if (!client->isConnected()) {
-        Serial.println("Client not connected after delay.");
-        delete client;
-        bleScan->clearResults();
-        return;
-      }
-
-      BLERemoteService* service = client->getService(SERVICE_UUID);
-      if (service == nullptr) {
-        Serial.println("Service not found.");
-        client->disconnect();
-        delete client;
-        bleScan->clearResults();
-        return;
-      }
-
-      BLERemoteCharacteristic* characteristic = service->getCharacteristic(CHARACTERISTIC_UUID);
-      if (characteristic == nullptr) {
-        Serial.println("Characteristic not found.");
-        client->disconnect();
-        delete client;
-        bleScan->clearResults();
-        return;
-      }
-
-      if (!characteristic->canWrite()) {
-        Serial.println("Characteristic not writable.");
-        client->disconnect();
-        delete client;
-        bleScan->clearResults();
-        return;
-      }
-
-      characteristic->writeValue("buzz");
-      Serial.println("'buzz' command sent.");
-
-      client->disconnect();
-      delete client;
-      bleScan->clearResults();
       return;
     }
   }
-
-  Serial.println("Tool not found.");
-  bleScan->clearResults();
+  Serial.println("Tool not found in MAC list.");
 }
 
-//HTTP communication (Frontend and Middleman)
 void handleFindTool() {
   if (server.method() != HTTP_POST) {
     server.send(405, "text/plain", "Only POST allowed");
@@ -94,28 +48,46 @@ void handleFindTool() {
   String body = server.arg("plain");
   Serial.println("Received POST body: " + body);
 
-  //JSON extraction
   int start = body.indexOf(":\"") + 2;
   int end = body.indexOf("\"", start);
   String toolCallname = body.substring(start, end);
 
-  Serial.println("Name: " + toolCallname);
-  Serial.println("Starting BLE process...");
+  Serial.println("Tool: " + toolCallname);
+
+  WiFi.disconnect(true);
+  delay(100);
+  esp_wifi_stop();
+  esp_now_init();
+  esp_now_register_send_cb(onDataSent);
+
+  for (int i = 0; i < sizeof(toolMACs) / sizeof(toolMACs[0]); i++) {
+    esp_now_peer_info_t peerInfo = {};
+    memcpy(peerInfo.peer_addr, toolMACs[i], 6);
+    peerInfo.channel = 1;
+    peerInfo.encrypt = false;
+    if (esp_now_add_peer(&peerInfo) == ESP_OK) {
+      Serial.println("Peer added");
+    } else {
+      Serial.println("Failed to add peer");
+    }
+  }
 
   sendBuzzToTool(toolCallname);
 
-  //CORS (Cross-Origin Resource Sharing) headers
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(100);
+  }
+
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.sendHeader("Access-Control-Allow-Headers", "*");
   server.sendHeader("Access-Control-Allow-Methods", "POST");
-
   server.send(200, "application/json", "{\"status\":\"buzz_sent\"}");
 }
 
 void setup() {
   Serial.begin(115200);
 
-  //Wi-Fi setup
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   Serial.print("Connecting to Wi-Fi");
@@ -125,12 +97,6 @@ void setup() {
   }
   Serial.println("\nConnected to Wi-Fi. IP: " + WiFi.localIP().toString());
 
-  //BLE scan init
-  BLEDevice::init("MiddlemanESP32");
-  bleScan = BLEDevice::getScan();
-  bleScan->setActiveScan(true);
-
-  //CORS preflight route
   server.on("/find_tool", HTTP_OPTIONS, []() {
     server.sendHeader("Access-Control-Allow-Origin", "*");
     server.sendHeader("Access-Control-Allow-Headers", "*");
@@ -138,12 +104,11 @@ void setup() {
     server.send(204);
   });
 
-  //Web server route
   server.on("/find_tool", handleFindTool);
   server.begin();
   Serial.println("HTTP server started.");
 }
 
 void loop() {
-  server.handleClient();  // Handle HTTP requests
+  server.handleClient();
 }
