@@ -6,6 +6,8 @@ const int LED_PIN = 8;
 const int BUZZER_PIN = 4;
 
 bool buzzNow = false;
+unsigned long wakeTime;
+const unsigned long TIMEOUT_MS = 5000; // Sleep after 5 seconds if no signal
 
 // Callback when ESP-NOW data is received
 void onDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData, int len) {
@@ -32,7 +34,7 @@ void setup() {
   Serial.begin(115200);
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
-  digitalWrite(LED_PIN, LOW);
+  digitalWrite(LED_PIN, HIGH);
 
   WiFi.mode(WIFI_STA);
   esp_wifi_set_channel(6, WIFI_SECOND_CHAN_NONE);  // Set to match middleman channel
@@ -45,22 +47,27 @@ void setup() {
 
   esp_now_register_recv_cb(onDataRecv);
   Serial.println("Ready to receive ESP-NOW messages...");
+
+  wakeTime = millis();
 }
 
 void loop() {
   if (buzzNow) {
-    digitalWrite(LED_PIN, HIGH);
+    digitalWrite(LED_PIN, LOW);
     for (int i = 0; i < 3; i++) {
       digitalWrite(BUZZER_PIN, HIGH);
       delay(1000);
       digitalWrite(BUZZER_PIN, LOW);
       delay(1000);
     }
-    digitalWrite(LED_PIN, LOW);
+    digitalWrite(LED_PIN, HIGH);
     buzzNow = false;
+  }
 
-    Serial.println("Going to deep sleep for 30 seconds...");
-    esp_sleep_enable_timer_wakeup(30LL * 1000000);  // 30 seconds
+  // Sleep if no signal received after timeout
+  if (millis() - wakeTime > TIMEOUT_MS) {
+    Serial.println("No signal received. Sleeping to save energy...");
+    esp_sleep_enable_timer_wakeup(30LL * 1000000);
     esp_deep_sleep_start();
   }
 }
