@@ -1,6 +1,6 @@
-// REVISED END_ESP32 CODE FOR ESP-NOW RECEPTION + VIBRATION
 #include <esp_now.h>
 #include <WiFi.h>
+#include "esp_wifi.h"
 
 const int LED_PIN = 8;
 const int BUZZER_PIN = 4;
@@ -32,9 +32,10 @@ void setup() {
   Serial.begin(115200);
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
-  digitalWrite(LED_PIN, HIGH);
+  digitalWrite(LED_PIN, LOW);
 
   WiFi.mode(WIFI_STA);
+  esp_wifi_set_channel(6, WIFI_SECOND_CHAN_NONE);  // Set to match middleman channel
   WiFi.disconnect();
 
   if (esp_now_init() != ESP_OK) {
@@ -43,23 +44,23 @@ void setup() {
   }
 
   esp_now_register_recv_cb(onDataRecv);
+  Serial.println("Ready to receive ESP-NOW messages...");
 }
 
 void loop() {
   if (buzzNow) {
-    digitalWrite(LED_PIN, LOW);
+    digitalWrite(LED_PIN, HIGH);
     for (int i = 0; i < 3; i++) {
       digitalWrite(BUZZER_PIN, HIGH);
       delay(1000);
       digitalWrite(BUZZER_PIN, LOW);
       delay(1000);
     }
-    digitalWrite(LED_PIN, HIGH);
+    digitalWrite(LED_PIN, LOW);
     buzzNow = false;
-  }
 
-  // Wake every 30s to listen again
-  Serial.println("Going to deep sleep for 30 seconds...");
-  esp_sleep_enable_timer_wakeup(1LL * 1000000);  // 30 seconds
-  esp_deep_sleep_start();
+    Serial.println("Going to deep sleep for 30 seconds...");
+    esp_sleep_enable_timer_wakeup(30LL * 1000000);  // 30 seconds
+    esp_deep_sleep_start();
+  }
 }

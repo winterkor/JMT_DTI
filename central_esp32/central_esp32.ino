@@ -13,10 +13,10 @@ WebServer server(80);
 // Tool MAC addresses
 // Replace with your real tool MAC addresses
 uint8_t toolMACs[][6] = {
-  {0x24, 0x6F, 0x28, 0xAA, 0xBB, 0xCC}, // Tool_01
-  {0x24, 0x6F, 0x28, 0xDD, 0xEE, 0xFF}  // Tool_02
+  {0x98, 0x88, 0xE0, 0xC9, 0xA6, 0x68}, // Tool_05
+  {0x98, 0x88, 0xE0, 0xC9, 0x98, 0xF0}  // Tool_02
 };
-String toolNames[] = {"Tool_01_clawhammer", "Tool_02_rubberhammer"};
+String toolNames[] = {"Tool_05_digitalmultimeter", "Tool_02_rubberhammer"};
 
 // ESP-NOW send callback
 void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
@@ -96,6 +96,8 @@ void setup() {
     Serial.print(".");
   }
   Serial.println("\nConnected to Wi-Fi. IP: " + WiFi.localIP().toString());
+  Serial.print("Connected to hotspot on channel: ");
+  Serial.println(WiFi.channel());
 
   server.on("/find_tool", HTTP_OPTIONS, []() {
     server.sendHeader("Access-Control-Allow-Origin", "*");
