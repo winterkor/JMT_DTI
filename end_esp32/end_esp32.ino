@@ -5,69 +5,86 @@
 const int LED_PIN = 8;
 const int BUZZER_PIN = 4;
 
-bool buzzNow = false;
-unsigned long wakeTime;
-const unsigned long TIMEOUT_MS = 5000; // Sleep after 5 seconds if no signal
+bool responded = false;
 
-// Callback when ESP-NOW data is received
-void onDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData, int len) {
-  String message = "";
-  for (int i = 0; i < len; i++) {
-    message += (char)incomingData[i];
-  }
+void onDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
+  if (responded) return;
 
-  Serial.print("From MAC: ");
-  char macStr[18];
-  snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
-           recv_info->src_addr[0], recv_info->src_addr[1], recv_info->src_addr[2],
-           recv_info->src_addr[3], recv_info->src_addr[4], recv_info->src_addr[5]);
-  Serial.println(macStr);
+  String msg = "";
+  for (int i = 0; i < len; i++) msg += (char)data[i];
 
-  Serial.println("ESP-NOW Message: " + message);
+  if (msg == "ping") {
+    const uint8_t* senderMac = recv_info->src_addr;
+    int rssi = recv_info->rx_ctrl->rssi;
 
-  if (message == "buzz") {
-    buzzNow = true;
+    // 📡 Print who sent the ping
+    char macStr[18];
+    snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+             senderMac[0], senderMac[1], senderMac[2],
+             senderMac[3], senderMac[4], senderMac[5]);
+    Serial.print("📡 Ping received from: ");
+    Serial.println(macStr);
+    Serial.printf("📶 RSSI = %d\n", rssi);
+
+    // ✅ Add peer dynamically (safe even if already added)
+    esp_now_peer_info_t peerInfo = {};
+    memcpy(peerInfo.peer_addr, senderMac, 6);
+    peerInfo.channel = 6;
+    peerInfo.encrypt = false;
+    esp_now_add_peer(&peerInfo);
+    delay(300);
+
+    // ✉️ Reply with pong and RSSI
+    String reply = "pong:" + String(rssi);
+    esp_err_t res = esp_now_send(senderMac, (uint8_t*)reply.c_str(), reply.length());
+    Serial.println(res == ESP_OK ? "✅ Sent pong!" : "❌ Failed to send pong!");
+    Serial.println(reply);
+    Serial.println(WiFi.channel());
+    esp_now_del_peer(senderMac);  // Clean up!
+
+    // Optional: Visual and audible feedback
+    digitalWrite(LED_PIN, LOW);
+    for (int i = 0; i < 3; i++) {
+      digitalWrite(BUZZER_PIN, HIGH); delay(500);
+      digitalWrite(BUZZER_PIN, LOW); delay(500);
+    }
+    digitalWrite(LED_PIN, HIGH);
+
+    responded = true;
+    delay(100);
+    Serial.println("😴 Going to deep sleep...");
+    esp_sleep_enable_timer_wakeup(30LL * 1000000);
+    esp_deep_sleep_start();
   }
 }
 
 void setup() {
+  delay(2000);  // Grace period on boot
   Serial.begin(115200);
+  Serial.println("🔧 ESP32-C3 Tool booted");
+
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
 
+  // 📡 Wi-Fi Setup (Channel 6)
   WiFi.mode(WIFI_STA);
-  esp_wifi_set_channel(6, WIFI_SECOND_CHAN_NONE);  // Set to match middleman channel
+  esp_wifi_set_promiscuous(true);                   // Needed to force channel
+  esp_wifi_set_channel(6, WIFI_SECOND_CHAN_NONE);   // Match middleman channel
+  esp_wifi_set_promiscuous(false);
   WiFi.disconnect();
 
+  // 🚀 Initialize ESP-NOW
   if (esp_now_init() != ESP_OK) {
-    Serial.println("Error initializing ESP-NOW");
+    Serial.println("❌ ESP-NOW init failed");
     return;
   }
 
   esp_now_register_recv_cb(onDataRecv);
-  Serial.println("Ready to receive ESP-NOW messages...");
-
-  wakeTime = millis();
+  Serial.println("✅ Ready to receive ping...");
+  Serial.println(WiFi.channel());
 }
 
 void loop() {
-  if (buzzNow) {
-    digitalWrite(LED_PIN, LOW);
-    for (int i = 0; i < 3; i++) {
-      digitalWrite(BUZZER_PIN, HIGH);
-      delay(1000);
-      digitalWrite(BUZZER_PIN, LOW);
-      delay(1000);
-    }
-    digitalWrite(LED_PIN, HIGH);
-    buzzNow = false;
-  }
-
-  // Sleep if no signal received after timeout
-  if (millis() - wakeTime > TIMEOUT_MS) {
-    Serial.println("No signal received. Sleeping to save energy...");
-    esp_sleep_enable_timer_wakeup(30LL * 1000000);
-    esp_deep_sleep_start();
-  }
+  // Nothing here; everything runs via interrupt callback
 }
