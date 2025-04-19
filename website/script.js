@@ -9,8 +9,8 @@ let tools = [
 ];
 
 const middlemen = [
-{ name: "M1", ip: "http://172.20.10.2" },
-{ name: "M2", ip: "http://172.20.10.4" }
+{ name: "M2", ip: "http://172.20.10.2" },
+{ name: "M1", ip: "http://172.20.10.4" }
 ];
 
 function showPopup(message, isLoading = false) {
@@ -80,7 +80,7 @@ filteredTools.forEach(tool => {
 }
 
 async function findmytool(tool) {
-  console.log(`Requesting tool: ${tool.callname}`);
+  console.log(`📨 Requesting tool: ${tool.callname}`);
   showPopup("🔍 Finding your tool...", true);
 
   try {
@@ -94,37 +94,55 @@ async function findmytool(tool) {
           });
 
           const data = await res.json();
+          console.log(`✅ ${m.name} responded with RSSI`, data.rssi);
           return { status: "fulfilled", name: m.name, rssi: data.rssi };
         } catch (err) {
+          console.warn(`⚠️ ${m.name} failed to respond`, err);
           return { status: "rejected", name: m.name, rssi: -999 };
         }
       })
     );
 
-    // Filter and normalize
+    // Normalize results
     const parsedResults = results.map(r =>
       r.status === "fulfilled"
-        ? { name: r.name, rssi: r.rssi }
-        : { name: r.name, rssi: -999 }
+        ? { name: r.value.name, rssi: r.value.rssi }
+        : { name: r.reason?.name || "Unknown", rssi: -999 }
     );
 
-    // Find closest
-    const closest = parsedResults.reduce((a, b) =>
-      b.rssi > a.rssi ? b : a
-    );
+    console.log("📊 All parsed results:", parsedResults);
+
+    // Handle case where no middleman responded
+    if (parsedResults.every(m => m.rssi === -999)) {
+      document.querySelector(".popup-content").innerHTML = `
+        <p>❌ No signal detected from any middleman.</p>
+        <button onclick="closePopup()">OK</button>
+      `;
+      return;
+    }
+
+    // Safely find closest responder
+    let closest = parsedResults[0];
+    for (let i = 1; i < parsedResults.length; i++) {
+      if (parsedResults[i].rssi > closest.rssi) {
+        closest = parsedResults[i];
+      }
+    }
 
     // Build result display
-    const allRSSIList = parsedResults
-      .map(m => `${m.name}: ${m.rssi === -999 ? '❌ No signal' : m.rssi}`)
-      .join("<br>");
+    const popup = document.querySelector(".popup-content");
+    if (!popup) {
+      console.error("❌ Popup content container not found.");
+      return;
+    }
 
-    document.querySelector(".popup-content").innerHTML = `
-      <p>📡 First to get signal: <b style="color: green">${closest.name}</b></p>
-      <p><b>RSSI Comparison:</b><br>${allRSSIList}</p>
+    // Display only the closest middleman
+    popup.innerHTML = `
+      <p>📡 <b>${tool.name}</b> is more near to <b style="color: green">${closest.name}</b></p>
       <button onclick="closePopup()">OK</button>
     `;
   } catch (error) {
-    console.error("Fetch error:", error);
+    console.error("🔥 Uncaught fetch error:", error);
     document.querySelector(".popup-content").innerHTML = `
       <p>⚠️ Failed to connect to the server.</p>
       <button onclick="closePopup()">OK</button>
