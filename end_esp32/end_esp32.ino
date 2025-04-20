@@ -12,7 +12,7 @@ bool responded = false;
 BLEAdvertising* pAdvertising;
 
 void startBLEAdvertisement() {
-  BLEDevice::init("Tool_06_clamp");
+  BLEDevice::init("Tool_03_hexscrewdriver");
   BLEServer* pServer = BLEDevice::createServer();
   pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->setScanResponse(false);
