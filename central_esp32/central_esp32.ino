@@ -8,6 +8,10 @@
 const char* ssid = "Luck";
 const char* password = "winterwifinotfreebutfree";
 
+const int LED_PIN = 2;
+int lastRSSI = -999;
+const char* middlemanName = "M2";
+
 #define SERVICE_UUID        "19b10010-e8f2-537e-4f6c-d104768a1214"
 #define CHARACTERISTIC_UUID "19b10011-e8f2-537e-4f6c-d104768a1214"
 
@@ -25,6 +29,7 @@ void sendBuzzToTool(String toolCallname) {
     Serial.println("Found: " + name);
 
     if (name == toolCallname) {
+      lastRSSI = device.getRSSI(); // Capture RSSI
       Serial.println("Match found. Connecting...");
 
       BLEClient* client = BLEDevice::createClient();
@@ -35,7 +40,7 @@ void sendBuzzToTool(String toolCallname) {
         return;
       }
 
-      delay(500); // Wait for BLE stack to settle
+      delay(100); // Wait for BLE stack to settle
 
       if (!client->isConnected()) {
         Serial.println("Client not connected after delay.");
@@ -104,17 +109,19 @@ void handleFindTool() {
 
   sendBuzzToTool(toolCallname);
 
-  //CORS (Cross-Origin Resource Sharing) headers
+  String response = "{";
+  response += "\"middleman\":\"" + String(middlemanName) + "\",";
+  response += "\"rssi\":" + String(lastRSSI) + "}";
+
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.sendHeader("Access-Control-Allow-Headers", "*");
   server.sendHeader("Access-Control-Allow-Methods", "POST");
-
-  server.send(200, "application/json", "{\"status\":\"buzz_sent\"}");
+  server.send(200, "application/json", response);
 }
 
 void setup() {
   Serial.begin(115200);
-
+  pinMode(LED_PIN, OUTPUT);
   //Wi-Fi setup
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -124,11 +131,11 @@ void setup() {
     Serial.print(".");
   }
   Serial.println("\nConnected to Wi-Fi. IP: " + WiFi.localIP().toString());
-
+  digitalWrite(LED_PIN, HIGH);
   //BLE scan init
   BLEDevice::init("MiddlemanESP32");
   bleScan = BLEDevice::getScan();
-  bleScan->setActiveScan(true);
+  bleScan->setActiveScan(false);
 
   //CORS preflight route
   server.on("/find_tool", HTTP_OPTIONS, []() {

@@ -8,11 +8,10 @@
 #define CHARACTERISTIC_UUID "19b10011-e8f2-537e-4f6c-d104768a1214"
 
 // Hardware pins
-const int LED_PIN = 8;
-const int BUZZER_PIN = 4;
+const int LED_PIN = 0;
+const int BUZZER_PIN = 1;
 
-bool buzzNow = false;
-unsigned long startTime;
+bool buzzNow = false, replyalr = false;
 
 // BLE characteristic pointer
 BLECharacteristic* commandCharacteristic;
@@ -22,7 +21,7 @@ class CommandCallback : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* characteristic) override {
     String value = characteristic->getValue();
     if (value == "buzz") {
-      Serial.println("Received 'buzz' command!");
+      Serial.println("✅ Received 'buzz' command!");
       buzzNow = true;
     }
   }
@@ -35,7 +34,7 @@ void setup() {
   digitalWrite(LED_PIN, HIGH);
 
   // BLE init
-  BLEDevice::init("Tool_03_rubberhammer");  // This must match the web callname
+  BLEDevice::init("Tool_01_clawhammer");  // This must match the web callname
   BLEServer* pServer = BLEDevice::createServer();
   BLEService* pService = pServer->createService(SERVICE_UUID);
 
@@ -48,28 +47,27 @@ void setup() {
 
   BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(false);
   pAdvertising->start();
-  // Serial.println("BLE Advertising: Tool_01_clawhammer");
+  Serial.println("📡 BLE Advertising started");
 }
 
 void loop() {
-  if (buzzNow) {
-    startTime = millis();
+  if (buzzNow && !replyalr) {
+    // 💡 Feedback: Buzzer + LED
+    replyalr = true;
     digitalWrite(LED_PIN, LOW);
     for (int i = 0; i < 3; i++) {
-      digitalWrite(BUZZER_PIN, HIGH);
-      delay(1000);
-      digitalWrite(BUZZER_PIN, LOW);
-      delay(1000);
+      digitalWrite(BUZZER_PIN, HIGH); delay(500);
+      digitalWrite(BUZZER_PIN, LOW);  delay(500);
     }
     digitalWrite(LED_PIN, HIGH);
     buzzNow = false;
-  }
 
-  // Deep sleep after 5 seconds idle
-  if (millis() - startTime > 30000) {
-    Serial.println("😴 Going to deep sleep...");
-    esp_sleep_enable_timer_wakeup(1000000); // 1 second wake-up
-    esp_deep_sleep_start(); // Will reset and restart setup
+    Serial.println("😴 Going to sleep for 10 seconds...");
+    delay(200); // Let serial finish
+    BLEDevice::deinit(); // Clean BLE stack before sleep
+    esp_sleep_enable_timer_wakeup(10 * 1000000);  // 10 seconds
+    esp_deep_sleep_start();
   }
 }
