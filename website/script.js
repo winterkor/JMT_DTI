@@ -9,8 +9,8 @@ let tools = [
 ];
 
 const middlemen = [
-{ name: "M2", ip: "http://172.20.10.2" },
-{ name: "M1", ip: "http://172.20.10.4" }
+{ name: "Beacon2", ip: "http://172.20.10.2" },
+{ name: "Beacon1", ip: "http://172.20.10.4" }
 ];
 
 function showPopup(message, isLoading = false) {

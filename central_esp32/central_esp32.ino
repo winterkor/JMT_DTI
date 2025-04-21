@@ -8,7 +8,7 @@
 const int LED_PIN = 2;
 const char* ssid = "Luck";
 const char* password = "winterwifinotfreebutfree";
-const char* middlemanName = "M2";
+const char* middlemanName = "Beacon2";
 
 WebServer server(80);
 int lastRSSI = -999;
