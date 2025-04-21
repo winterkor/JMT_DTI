@@ -31,10 +31,10 @@ void setup() {
   Serial.begin(115200);
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
-  digitalWrite(LED_PIN, HIGH);
+  digitalWrite(LED_PIN, LOW);
 
   // BLE init
-  BLEDevice::init("Tool_01_clawhammer");  // This must match the web callname
+  BLEDevice::init("Tool_05_digitalmultimeter");  // This must match the web callname
   BLEServer* pServer = BLEDevice::createServer();
   BLEService* pService = pServer->createService(SERVICE_UUID);
 
@@ -56,12 +56,12 @@ void loop() {
   if (buzzNow && !replyalr) {
     // 💡 Feedback: Buzzer + LED
     replyalr = true;
-    digitalWrite(LED_PIN, LOW);
+    digitalWrite(LED_PIN, HIGH);
     for (int i = 0; i < 3; i++) {
       digitalWrite(BUZZER_PIN, HIGH); delay(500);
       digitalWrite(BUZZER_PIN, LOW);  delay(500);
     }
-    digitalWrite(LED_PIN, HIGH);
+    digitalWrite(LED_PIN, LOW);
     buzzNow = false;
 
     Serial.println("😴 Going to sleep for 10 seconds...");

@@ -9,8 +9,8 @@ let tools = [
 ];
 
 const middlemen = [
-{ name: "M2", ip: "http://172.20.10.2" },
-{ name: "M1", ip: "http://172.20.10.4" }
+{ name: "Beacon2", ip: "http://172.20.10.2" },
+{ name: "Beacon1", ip: "http://172.20.10.4" }
 ];
 
 function showPopup(message, isLoading = false) {
@@ -138,7 +138,7 @@ async function findmytool(tool) {
 
     // Display only the closest middleman
     popup.innerHTML = `
-      <p>📡 <b>${tool.name}</b> is more near to <b style="color: green">${closest.name}</b></p>
+      <p>📡 <b>${tool.name}</b> is nearer to <b style="color: green">${closest.name}</b></p>
       <button onclick="closePopup()">OK</button>
     `;
   } catch (error) {
