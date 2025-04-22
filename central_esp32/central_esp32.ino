@@ -10,7 +10,7 @@ const char* password = "winterwifinotfreebutfree";
 
 const int LED_PIN = 2;
 int lastRSSI = -999;
-const char* middlemanName = "Beacon2";
+const char* middlemanName = "Beacon1";
 
 #define SERVICE_UUID        "19b10010-e8f2-537e-4f6c-d104768a1214"
 #define CHARACTERISTIC_UUID "19b10011-e8f2-537e-4f6c-d104768a1214"
@@ -21,7 +21,7 @@ BLEScan* bleScan;
 //BLE signal sending (Middleman and End_ESP32)
 void sendBuzzToTool(String toolCallname) {
   Serial.println("Scanning for BLE device: " + toolCallname);
-  BLEScanResults* results = bleScan->start(10);
+  BLEScanResults* results = bleScan->start(5);
 
   for (int i = 0; i < results->getCount(); i++) {
     BLEAdvertisedDevice device = results->getDevice(i);
@@ -135,7 +135,7 @@ void setup() {
   //BLE scan init
   BLEDevice::init("MiddlemanESP32");
   bleScan = BLEDevice::getScan();
-  bleScan->setActiveScan(false);
+  bleScan->setActiveScan(true);
 
   //CORS preflight route
   server.on("/find_tool", HTTP_OPTIONS, []() {
