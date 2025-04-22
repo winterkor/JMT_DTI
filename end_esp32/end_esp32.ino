@@ -34,7 +34,7 @@ void setup() {
   digitalWrite(LED_PIN, LOW);
 
   // BLE init
-  BLEDevice::init("Tool_05_digitalmultimeter");  // This must match the web callname
+  BLEDevice::init("Tool_04_digitalmultimeter");  // This must match the web callname
   BLEServer* pServer = BLEDevice::createServer();
   BLEService* pService = pServer->createService(SERVICE_UUID);
 
