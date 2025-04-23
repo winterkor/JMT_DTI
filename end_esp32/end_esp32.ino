@@ -12,7 +12,7 @@ const int LED_PIN = 0;
 const int BUZZER_PIN = 1;
 
 bool buzzNow = false, replyalr = false;
-
+s
 // BLE characteristic pointer
 BLECharacteristic* commandCharacteristic;
 
@@ -57,10 +57,11 @@ void loop() {
     // 💡 Feedback: Buzzer + LED
     replyalr = true;
     digitalWrite(LED_PIN, HIGH);
-    for (int i = 0; i < 3; i++) {
-      digitalWrite(BUZZER_PIN, HIGH); delay(500);
-      digitalWrite(BUZZER_PIN, LOW);  delay(500);
-    }
+    // for (int i = 0; i < 3; i++) {
+    //   digitalWrite(BUZZER_PIN, HIGH); delay(500);
+    //   digitalWrite(BUZZER_PIN, LOW);  delay(500);
+    // }
+    delay(1000);
     digitalWrite(LED_PIN, LOW);
     buzzNow = false;
 
