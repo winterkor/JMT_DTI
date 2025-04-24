@@ -1,7 +1,8 @@
 #include <esp_now.h>
-#include <WiFi.h>
-#include "esp_wifi.h"
-#include <BLEDevice.h>
+#include <WiFi.h>           // Wi-Fi before BLE
+#include "esp_wifi.h"       // For channel settings
+
+#include <BLEDevice.h>      // BLE stack
 #include <BLEUtils.h>
 #include <BLEServer.h>
 

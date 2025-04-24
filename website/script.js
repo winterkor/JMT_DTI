@@ -130,11 +130,11 @@ async function findmytool(tool) {
     }
 
     // Build result display
-    const popup = document.querySelector(".popup-content");
-    if (!popup) {
-      console.error("❌ Popup content container not found.");
-      return;
-    }
+    // const popup = document.querySelector(".popup-content");
+    // if (!popup) {
+    //   console.error("❌ Popup content container not found.");
+    //   return;
+    // }
 
     // Display only the closest middleman
     popup.innerHTML = `
